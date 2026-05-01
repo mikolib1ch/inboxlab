@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router";
+import { BadgeUnlockModal } from "./BadgeUnlockModal";
 
 interface Rating {
   category: string;
@@ -19,6 +20,7 @@ interface Email {
   read: boolean;
   overallScore: number;
   ratings: Rating[];
+  unlockedBadges?: string[];
 }
 
 export function Inbox() {
@@ -46,6 +48,8 @@ export function Inbox() {
   }, []);
   // ...existing code...
   // Load initial emails from localStorage, or use default if none
+  const [unlockedBadges, setUnlockedBadges] = useState<string[]>([]);
+
   const defaultEmails: Email[] = [
     {
       id: 1,
@@ -223,16 +227,19 @@ export function Inbox() {
 
   const handleEmailClick = (emailId: number) => {
     setSelectedEmail(emailId);
+
     setEmails((prevEmails) => {
       const updated = prevEmails.map((email) =>
         email.id === emailId ? { ...email, read: true } : email,
       );
+
       // Update localStorage for user messages
       try {
         const localMsgs = JSON.parse(
           localStorage.getItem("inboxMessages") || "[]",
         );
         let changed = false;
+
         const updatedLocalMsgs = localMsgs.map((msg: any) => {
           if (msg.id === emailId && !msg.read) {
             changed = true;
@@ -240,6 +247,7 @@ export function Inbox() {
           }
           return msg;
         });
+
         if (changed) {
           localStorage.setItem(
             "inboxMessages",
@@ -247,6 +255,7 @@ export function Inbox() {
           );
         }
       } catch {}
+
       // Update readMap for hardcoded emails
       try {
         let readMap: Record<number, boolean> = {};
@@ -254,6 +263,7 @@ export function Inbox() {
           readMap =
             JSON.parse(localStorage.getItem("inboxReadMap") || "{}") || {};
         } catch {}
+
         if (defaultEmails.some((e) => e.id === emailId)) {
           if (!readMap[emailId]) {
             readMap[emailId] = true;
@@ -261,8 +271,32 @@ export function Inbox() {
           }
         }
       } catch {}
+
       return updated;
     });
+
+    try {
+      const clickedEmail = emails.find((email) => email.id === emailId);
+
+      if (
+        clickedEmail?.unlockedBadges &&
+        clickedEmail.unlockedBadges.length > 0
+      ) {
+        setUnlockedBadges(clickedEmail.unlockedBadges);
+
+        const localMsgs = JSON.parse(
+          localStorage.getItem("inboxMessages") || "[]",
+        );
+
+        const updatedLocalMsgs = localMsgs.map((msg: any) =>
+          msg.id === emailId ? { ...msg, unlockedBadges: [] } : msg,
+        );
+
+        localStorage.setItem("inboxMessages", JSON.stringify(updatedLocalMsgs));
+
+        setEmails(getAllEmails());
+      }
+    } catch {}
   };
 
   const getScoreColor = (score: number) => {
@@ -273,233 +307,219 @@ export function Inbox() {
   };
 
   return (
-    <div className="h-[calc(100vh-10rem)] bg-white border-2 border-black flex">
-      {/* Left Sidebar - Email List */}
-      <div className="w-96 border-r-2 border-black flex flex-col">
-        <div className="p-4 border-b-2 border-black">
-          <h2
-            className="text-lg"
-            style={{
-              fontFamily: '"Press Start 2P", system-ui',
-              fontWeight: 400,
-            }}
-          >
-            Inbox
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            {emails.length} message{emails.length !== 1 ? "s" : ""}
-          </p>
-        </div>
+    <>
+      <BadgeUnlockModal
+        badges={unlockedBadges}
+        onClose={() => setUnlockedBadges([])}
+      />
 
-        <div className="flex-1 overflow-y-auto">
-          {emails.map((email) => (
-            <button
-              key={email.id}
-              onClick={() => handleEmailClick(email.id)}
-              className={`w-full p-4 border-b border-[#f6ede4] hover:bg-[#f6ede4] cursor-pointer text-left transition-colors ${
-                selectedEmail === email.id ? "bg-[#f6ede4]" : ""
-              } ${!email.read ? "bg-[#ec78b8]/10" : ""}`}
+      <div className="h-[calc(100vh-10rem)] bg-white border-2 border-black flex">
+        {/* Left Sidebar - Email List */}
+        <div className="w-96 border-r-2 border-black flex flex-col">
+          <div className="p-4 border-b-2 border-black">
+            <h2
+              className="text-lg"
+              style={{
+                fontFamily: '"Press Start 2P", system-ui',
+                fontWeight: 400,
+              }}
             >
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="font-bold text-sm truncate flex-1">
-                    {email.from}
-                  </div>
-                  {!email.read && (
-                    <div className="w-2 h-2 bg-[#ec78b8] rounded-full ml-2"></div>
-                  )}
-                </div>
-                <div className="font-mono text-xs text-gray-600">
-                  {email.date ? new Date(email.date).toLocaleDateString() : ""}
-                </div>
-                <div className="font-mono text-sm truncate">
-                  {email.subject}
-                </div>
-                <div className="text-xs text-gray-500 truncate">
-                  {email.preview}
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs font-bold">Score:</span>
-                  <span
-                    className={`text-xs font-bold px-2 py-0.5 border border-black ${getScoreColor(email.overallScore)} text-white`}
-                  >
-                    {Math.round((email.overallScore / 5) * 100)}%
-                  </span>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+              Inbox
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {emails.length} message{emails.length !== 1 ? "s" : ""}
+            </p>
+          </div>
 
-      {/* Right Side - Email Reading Pane */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {selectedEmailData ? (
-          <>
-            {/* Email Header */}
-            <div className="p-6 border-b-2 border-black flex-shrink-0">
-              <h2 className="font-bold text-xl mb-4">
-                {selectedEmailData.subject}
-              </h2>
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 border-2 border-black bg-[#ec78b8] flex-shrink-0"></div>
-                <div className="flex-1">
-                  <div className="font-bold">{selectedEmailData.from}</div>
-                  <div className="text-sm text-gray-600">
-                    {selectedEmailData.fromEmail}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {selectedEmailData.date}
-                  </div>
-                </div>
-                <div className="bg-[#f6ede4] border-2 border-black px-4 py-3 min-w-[250px]">
-                  <div className="font-mono text-sm font-bold mb-2">
-                    Overall Score
-                  </div>
-                  <div className="w-full h-6 border-2 border-black bg-white relative">
-                    <div
-                      className={`h-full transition-all ${
-                        (selectedEmailData.overallScore / 5) * 100 > 75
-                          ? "bg-green-500"
-                          : (selectedEmailData.overallScore / 5) * 100 >= 40
-                            ? "bg-orange-500"
-                            : "bg-red-500"
-                      }`}
-                      style={{
-                        width: `${(selectedEmailData.overallScore / 5) * 100}%`,
-                      }}
-                    ></div>
-                  </div>
-                  <div className="font-mono text-xs mt-1 text-right font-bold">
-                    {Math.round((selectedEmailData.overallScore / 5) * 100)}%
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Scrollable Content Area */}
-            <div className="flex-1 overflow-y-auto">
-              {/* Faculty Reply */}
-              <div className="p-6 border-b-2 border-black">
-                <h3 className="font-bold text-lg mb-3">Faculty Response</h3>
-                <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
-                  {selectedEmailData.body}
-                </div>
-              </div>
-
-              {/* Original Message */}
-              <div className="p-6 border-b-2 border-black">
-                <h3 className="font-bold text-lg mb-3">
-                  Your Original Message
-                </h3>
-                <div className="bg-[#f6ede4] border-2 border-black p-4">
-                  <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
-                    {selectedEmailData.originalMessage}
-                  </div>
-                </div>
-              </div>
-
-              {/* Ratings Section */}
-              <div className="p-6 bg-[#f6ede4]">
-                <h3 className="font-bold text-lg mb-4">
-                  Email Rating & Feedback
-                </h3>
-                <div className="space-y-3">
-                  {selectedEmailData.ratings.map((rating, index) => (
-                    <div
-                      key={index}
-                      className="bg-white border-2 border-black p-4"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold text-sm">
-                          {rating.category}
-                        </span>
-                        <div className="flex gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <div
-                              key={star}
-                              className={`w-5 h-5 border border-black ${
-                                star <= rating.score
-                                  ? "bg-[#ec78b8]"
-                                  : "bg-white"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-700 font-mono">
-                        {rating.feedback}
-                      </p>
+          <div className="flex-1 overflow-y-auto">
+            {emails.map((email) => (
+              <button
+                key={email.id}
+                onClick={() => handleEmailClick(email.id)}
+                className={`w-full p-4 border-b border-[#f6ede4] hover:bg-[#f6ede4] cursor-pointer text-left transition-colors ${
+                  selectedEmail === email.id ? "bg-[#f6ede4]" : ""
+                } ${!email.read ? "bg-[#ec78b8]/10" : ""}`}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-sm truncate flex-1">
+                      {email.from}
                     </div>
-                  ))}
+                    {!email.read && (
+                      <div className="w-2 h-2 bg-[#ec78b8] rounded-full ml-2"></div>
+                    )}
+                  </div>
+                  <div className="font-mono text-xs text-gray-600">
+                    {email.date
+                      ? new Date(email.date).toLocaleDateString()
+                      : ""}
+                  </div>
+                  <div className="font-mono text-sm truncate">
+                    {email.subject}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {email.preview}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs font-bold">Score:</span>
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 border border-black ${getScoreColor(
+                        email.overallScore,
+                      )} text-white`}
+                    >
+                      {Math.round((email.overallScore / 5) * 100)}%
+                    </span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Side - Email Reading Pane */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {selectedEmailData ? (
+            <>
+              {/* Email Header */}
+              <div className="p-6 border-b-2 border-black flex-shrink-0">
+                <h2 className="font-bold text-xl mb-4">
+                  {selectedEmailData.subject}
+                </h2>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 border-2 border-black bg-[#ec78b8] flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="font-bold">{selectedEmailData.from}</div>
+                    <div className="text-sm text-gray-600">
+                      {selectedEmailData.fromEmail}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {selectedEmailData.date}
+                    </div>
+                  </div>
+                  <div className="bg-[#f6ede4] border-2 border-black px-4 py-3 min-w-[250px]">
+                    <div className="font-mono text-sm font-bold mb-2">
+                      Overall Score
+                    </div>
+                    <div className="w-full h-6 border-2 border-black bg-white relative">
+                      <div
+                        className={`h-full transition-all ${
+                          (selectedEmailData.overallScore / 5) * 100 > 75
+                            ? "bg-green-500"
+                            : (selectedEmailData.overallScore / 5) * 100 >= 40
+                              ? "bg-orange-500"
+                              : "bg-red-500"
+                        }`}
+                        style={{
+                          width: `${(selectedEmailData.overallScore / 5) * 100}%`,
+                        }}
+                      ></div>
+                    </div>
+                    <div className="font-mono text-xs mt-1 text-right font-bold">
+                      {Math.round((selectedEmailData.overallScore / 5) * 100)}%
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Action Buttons */}
-            <div className="p-6 border-t-2 border-black flex-shrink-0">
-              <div className="flex gap-3">
-                <button className="px-6 py-3 border-2 border-black bg-[#ec78b8] text-white hover:opacity-90 transition-opacity">
-                  <span className="font-mono text-sm">Reply</span>
-                </button>
-                <button
-                  className="px-6 py-3 border-2 border-black bg-white hover:bg-[#f6ede4] transition-colors"
-                  onClick={() => {
-                    if (!selectedEmailData) return;
-                    // Remove from localStorage if user message
-                    let removed = false;
-                    try {
-                      const localMsgs = JSON.parse(
-                        localStorage.getItem("inboxMessages") || "[]",
-                      );
-                      const filtered = localMsgs.filter(
-                        (msg: any) => msg.id !== selectedEmailData.id,
-                      );
-                      if (filtered.length !== localMsgs.length) {
+              {/* Scrollable Content Area */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-6 border-b-2 border-black">
+                  <h3 className="font-bold text-lg mb-3">Faculty Response</h3>
+                  <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                    {selectedEmailData.body}
+                  </div>
+                </div>
+
+                <div className="p-6 border-b-2 border-black">
+                  <h3 className="font-bold text-lg mb-3">
+                    Your Original Message
+                  </h3>
+                  <div className="bg-[#f6ede4] border-2 border-black p-4">
+                    <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                      {selectedEmailData.originalMessage}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-[#f6ede4]">
+                  <h3 className="font-bold text-lg mb-4">
+                    Email Rating & Feedback
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedEmailData.ratings.map((rating, index) => (
+                      <div
+                        key={index}
+                        className="bg-white border-2 border-black p-4"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-bold text-sm">
+                            {rating.category}
+                          </span>
+                          <div className="flex gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <div
+                                key={star}
+                                className={`w-5 h-5 border border-black ${
+                                  star <= rating.score
+                                    ? "bg-[#ec78b8]"
+                                    : "bg-white"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-700 font-mono">
+                          {rating.feedback}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="p-6 border-t-2 border-black flex-shrink-0">
+                <div className="flex gap-3">
+                  <button className="px-6 py-3 border-2 border-black bg-[#ec78b8] text-white hover:opacity-90 transition-opacity">
+                    <span className="font-mono text-sm">Reply</span>
+                  </button>
+                  <button
+                    className="px-6 py-3 border-2 border-black bg-white hover:bg-[#f6ede4] transition-colors"
+                    onClick={() => {
+                      if (!selectedEmailData) return;
+
+                      try {
+                        const localMsgs = JSON.parse(
+                          localStorage.getItem("inboxMessages") || "[]",
+                        );
+                        const filtered = localMsgs.filter(
+                          (msg: any) => msg.id !== selectedEmailData.id,
+                        );
                         localStorage.setItem(
                           "inboxMessages",
                           JSON.stringify(filtered),
                         );
-                        removed = true;
-                      }
-                    } catch {}
-                    // For hardcoded emails, just remove read state (optional: could hide entirely, but here we just mark as unread)
-                    try {
-                      let readMap: Record<number, boolean> = {};
-                      try {
-                        readMap =
-                          JSON.parse(
-                            localStorage.getItem("inboxReadMap") || "{}",
-                          ) || {};
                       } catch {}
-                      if (readMap[selectedEmailData.id]) {
-                        delete readMap[selectedEmailData.id];
-                        localStorage.setItem(
-                          "inboxReadMap",
-                          JSON.stringify(readMap),
-                        );
-                        removed = true;
-                      }
-                    } catch {}
-                    // Update state
-                    setSelectedEmail(null);
-                    setEmails(getAllEmails());
-                  }}
-                >
-                  <span className="font-mono text-sm">Archive</span>
-                </button>
+
+                      setSelectedEmail(null);
+                      setEmails(getAllEmails());
+                    }}
+                  >
+                    <span className="font-mono text-sm">Archive</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <div className="w-16 h-16 border-2 border-gray-300 bg-gray-100 mx-auto mb-4"></div>
+                <p className="font-mono text-sm">Select an email to read</p>
               </div>
             </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <div className="w-16 h-16 border-2 border-gray-300 bg-gray-100 mx-auto mb-4"></div>
-              <p className="font-mono text-sm">Select an email to read</p>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
