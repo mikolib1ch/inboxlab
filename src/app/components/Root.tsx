@@ -1,14 +1,59 @@
 import { Link, Outlet, useLocation } from "react-router";
+
 import { Menu, X, Settings } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export function Root() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false);
+
+  // Check for unread emails in localStorage (same logic as Inbox)
+  useEffect(() => {
+    function checkUnread() {
+      let unread = false;
+      try {
+        // Get hardcoded emails' read state
+        const readMap =
+          JSON.parse(localStorage.getItem("inboxReadMap") || "{}") || {};
+        // Get user emails
+        const localMsgs = JSON.parse(
+          localStorage.getItem("inboxMessages") || "[]",
+        );
+        // Check hardcoded emails (ids 1,2,3)
+        for (let id of [1, 2, 3]) {
+          if (!readMap[id]) {
+            unread = true;
+            break;
+          }
+        }
+        // Check user emails
+        if (!unread) {
+          if (
+            Array.isArray(localMsgs) &&
+            localMsgs.some((msg) => msg && msg.read === false)
+          ) {
+            unread = true;
+          }
+        }
+      } catch {}
+      setHasUnread(unread);
+    }
+    checkUnread();
+    // Listen for storage changes
+    window.addEventListener("storage", checkUnread);
+    // Poll every 2s in case storage event doesn't fire
+    const interval = setInterval(checkUnread, 2000);
+    return () => {
+      window.removeEventListener("storage", checkUnread);
+      clearInterval(interval);
+    };
+  }, []);
 
   const navItems = [
     { path: "/", label: "Dashboard" },
     { path: "/inbox", label: "Inbox" },
+    { path: "/badge-gallery", label: "Badge Gallery" },
     { path: "/compose", label: "Compose new message" },
     { path: "/profile", label: "Profile" },
     { path: "/settings", label: "Settings" },
@@ -34,8 +79,21 @@ export function Root() {
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
             <div className="flex items-baseline gap-1">
-              <span className="text-lg" style={{ fontFamily: '"Press Start 2P", system-ui', fontWeight: 400 }}>inbox</span>
-              <span className="text-2xl" style={{ fontFamily: 'Caveat, cursive' }}>lab</span>
+              <span
+                className="text-lg"
+                style={{
+                  fontFamily: '"Press Start 2P", system-ui',
+                  fontWeight: 400,
+                }}
+              >
+                inbox
+              </span>
+              <span
+                className="text-2xl"
+                style={{ fontFamily: "Caveat, cursive" }}
+              >
+                lab
+              </span>
             </div>
           </div>
           <Link
@@ -66,11 +124,21 @@ export function Root() {
                     : "bg-white text-black border-black hover:bg-[#f6ede4]"
                 }`}
               >
-                <span 
-                  className="font-mono text-sm"
-                  style={item.label === "Inbox" ? { fontFamily: '"Press Start 2P", system-ui', fontWeight: 400 } : {}}
+                <span
+                  className="font-mono text-sm flex items-center gap-2"
+                  style={
+                    item.label === "Inbox"
+                      ? {
+                          fontFamily: '"Press Start 2P", system-ui',
+                          fontWeight: 400,
+                        }
+                      : {}
+                  }
                 >
                   {item.label}
+                  {item.label === "Inbox" && hasUnread && (
+                    <span className="w-2 h-2 bg-[#ec78b8] rounded-full inline-block ml-1" />
+                  )}
                 </span>
               </Link>
             ))}

@@ -5,6 +5,7 @@ import { Messages } from "./components/Messages";
 import { Inbox } from "./components/Inbox";
 import { Profile } from "./components/Profile";
 import { Settings } from "./components/Settings";
+import { BadgeGallery } from "./components/BadgeGallery";
 
 export const router = createBrowserRouter([
   {
@@ -14,6 +15,7 @@ export const router = createBrowserRouter([
       { index: true, Component: Dashboard },
       { path: "compose", Component: Messages },
       { path: "inbox", Component: Inbox },
+      { path: "badge-gallery", Component: BadgeGallery },
       { path: "profile", Component: Profile },
       { path: "settings", Component: Settings },
     ],
