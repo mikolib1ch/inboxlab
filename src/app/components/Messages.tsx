@@ -161,6 +161,20 @@ export function Messages() {
           },
         ];
         overallScore = 1.2;
+      }
+
+      if (overallScore === 5) {
+        const progress = JSON.parse(
+          localStorage.getItem("badgeProgress") || "{}",
+        );
+
+        progress.professionalTone = (progress.professionalTone || 0) + 1;
+        progress.subjectLine = (progress.subjectLine || 0) + 1;
+        progress.completeness = (progress.completeness || 0) + 1;
+        progress.structure = (progress.structure || 0) + 1;
+        progress.timeliness = (progress.timeliness || 0) + 1;
+
+        localStorage.setItem("badgeProgress", JSON.stringify(progress));
       } else {
         // Fallback to word count logic
         const wordCount = msg.body.trim().split(/\s+/).filter(Boolean).length;
