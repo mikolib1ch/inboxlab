@@ -1,9 +1,42 @@
 import { useState } from "react";
+
 // Util to save message to localStorage
 function saveMessageToInbox(message: any) {
   const inbox = JSON.parse(localStorage.getItem("inboxMessages") || "[]");
   inbox.push(message);
   localStorage.setItem("inboxMessages", JSON.stringify(inbox));
+}
+
+function checkNewBadgeUnlocks(oldProgress: any, newProgress: any) {
+  const badges = [
+    { name: "Perfect Tone II", key: "professionalTone", base: 4, goal: 5 },
+    { name: "Perfect Tone III", key: "professionalTone", base: 4, goal: 10 },
+    { name: "Early Bird II", key: "timeliness", base: 5, goal: 15 },
+    { name: "Early Bird III", key: "timeliness", base: 5, goal: 30 },
+    { name: "Clear Communicator II", key: "subjectLine", base: 1, goal: 5 },
+    { name: "Clear Communicator III", key: "subjectLine", base: 1, goal: 10 },
+    { name: "Perfect Completeness I", key: "completeness", base: 0, goal: 1 },
+    { name: "Perfect Completeness II", key: "completeness", base: 0, goal: 5 },
+    {
+      name: "Perfect Completeness III",
+      key: "completeness",
+      base: 0,
+      goal: 10,
+    },
+    { name: "Perfect Structure I", key: "structure", base: 0, goal: 1 },
+    { name: "Perfect Structure II", key: "structure", base: 0, goal: 5 },
+    { name: "Perfect Structure III", key: "structure", base: 0, goal: 10 },
+    { name: "Speedy Sender I", key: "timeliness", base: 0, goal: 1 },
+    { name: "Speedy Sender II", key: "timeliness", base: 0, goal: 5 },
+    { name: "Speedy Sender III", key: "timeliness", base: 0, goal: 10 },
+  ];
+
+  return badges.filter((badge) => {
+    const oldValue = badge.base + (oldProgress[badge.key] || 0);
+    const newValue = badge.base + (newProgress[badge.key] || 0);
+
+    return oldValue < badge.goal && newValue >= badge.goal;
+  });
 }
 
 export function Messages() {
@@ -32,11 +65,11 @@ export function Messages() {
     setIsNewContact(true);
   };
 
-  // Send message handler
   const handleSend = () => {
     if (!subject.trim() || !body.trim()) return;
+
     setSending(true);
-    // Only save the automated reply to the inbox after 10s
+
     const msg = {
       id: Date.now(),
       from: "You",
@@ -50,6 +83,7 @@ export function Messages() {
       overallScore: 0,
       ratings: [],
     };
+
     setTimeout(() => {
       const metrics = [
         "Professional Tone",
@@ -58,26 +92,29 @@ export function Messages() {
         "Clarity & Structure",
         "Timeliness",
       ];
+
       const wellWritten =
         msg.body.includes(
           "I hope this message finds you well. I am writing to seek your guidance regarding the upcoming coursework",
         ) && msg.body.includes("Kind regards,\nMiko Libich");
+
       const midWritten =
         msg.body.includes("I had a quick question about the coursework") &&
         msg.body.includes("Thank you");
+
       const badWritten =
         msg.body.includes("I don’t really get the coursework") &&
         msg.body.includes("You should explain it better");
 
       let replyBody =
         "Thank you for your message. We will get back to you soon.";
+      let replyRatings: any[] = [];
+      let overallScore = 0;
+      let unlockedBadgeNames: string[] = [];
+
       if (wellWritten) {
         replyBody = `Dear Miko,\n\nThank you for your thoughtful message and for taking the time to review the coursework materials in detail. I appreciate your proactive approach in seeking clarification to ensure you meet the required standards.\n\nFor the upcoming coursework, I recommend focusing on the key objectives outlined in the assignment brief. Pay particular attention to the sections on methodology and analysis, as these are weighted most heavily in the grading rubric. If you would like, I can share additional resources or examples from previous years to help guide your approach.\n\nPlease let me know if you have any specific questions or if there are particular areas you would like more guidance on. I'm happy to support you further.\n\nBest regards,\nProf. Cameron Winter`;
-      }
 
-      let replyRatings;
-      let overallScore;
-      if (wellWritten) {
         replyRatings = [
           {
             category: "Professional Tone",
@@ -105,6 +142,7 @@ export function Messages() {
             feedback: "Appropriate timing and courteous closing.",
           },
         ];
+
         overallScore = 5;
       } else if (midWritten) {
         replyRatings = [
@@ -129,8 +167,13 @@ export function Messages() {
             feedback:
               "Message is understandable but could be better organized.",
           },
-          { category: "Timeliness", score: 4, feedback: "Appropriate timing." },
+          {
+            category: "Timeliness",
+            score: 4,
+            feedback: "Appropriate timing.",
+          },
         ];
+
         overallScore = 3.4;
       } else if (badWritten) {
         replyRatings = [
@@ -160,19 +203,42 @@ export function Messages() {
             feedback: "Timing is okay, but tone is inappropriate.",
           },
         ];
+
         overallScore = 1.2;
       } else {
-        // Fallback to word count logic
         const wordCount = msg.body.trim().split(/\s+/).filter(Boolean).length;
         const isShort = wordCount < 20;
         const score = isShort ? 1 : 5;
         const feedback = isShort ? "Too brief. Needs more detail." : "Perfect!";
+
         replyRatings = metrics.map((category) => ({
           category,
           score,
           feedback,
         }));
+
         overallScore = score;
+      }
+
+      if (overallScore === 5) {
+        const oldProgress = JSON.parse(
+          localStorage.getItem("badgeProgress") || "{}",
+        );
+
+        const newProgress = {
+          ...oldProgress,
+          professionalTone: (oldProgress.professionalTone || 0) + 1,
+          subjectLine: (oldProgress.subjectLine || 0) + 1,
+          completeness: (oldProgress.completeness || 0) + 1,
+          structure: (oldProgress.structure || 0) + 1,
+          timeliness: (oldProgress.timeliness || 0) + 1,
+        };
+
+        const newlyUnlocked = checkNewBadgeUnlocks(oldProgress, newProgress);
+
+        localStorage.setItem("badgeProgress", JSON.stringify(newProgress));
+
+        unlockedBadgeNames = newlyUnlocked.map((badge) => badge.name);
       }
 
       const reply = {
@@ -190,9 +256,12 @@ export function Messages() {
         read: false,
         overallScore,
         ratings: replyRatings,
+        unlockedBadges: unlockedBadgeNames,
       };
+
       saveMessageToInbox(reply);
     }, 10000);
+
     setSubject("");
     setBody("");
     setTo("");
@@ -202,7 +271,6 @@ export function Messages() {
 
   return (
     <div className="h-[calc(100vh-10rem)] bg-white border-2 border-black flex">
-      {/* Left Sidebar - Recently Contacted Staff */}
       <div className="w-80 border-r-2 border-black flex flex-col">
         <div className="p-4 border-b-2 border-black">
           <h2 className="font-bold text-lg">Recently Contacted Staff</h2>
@@ -225,7 +293,6 @@ export function Messages() {
           ))}
         </div>
 
-        {/* Contact Someone New Button */}
         <div className="p-4 border-t-2 border-black">
           <button
             onClick={handleNewContactClick}
@@ -238,11 +305,9 @@ export function Messages() {
         </div>
       </div>
 
-      {/* Right Side - Message Compose Area */}
       <div className="flex-1 flex flex-col">
         {selectedContact || isNewContact ? (
           <>
-            {/* Message Header */}
             <div className="p-4 border-b-2 border-black">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 border-2 border-black bg-[#ec78b8]"></div>
@@ -259,10 +324,8 @@ export function Messages() {
               </div>
             </div>
 
-            {/* Compose Form */}
             <div className="flex-1 p-6 overflow-y-auto">
               <div className="space-y-4">
-                {/* To Field (only for new contacts) */}
                 {isNewContact && (
                   <div>
                     <label className="block font-mono text-sm mb-2">To:</label>
@@ -276,7 +339,6 @@ export function Messages() {
                   </div>
                 )}
 
-                {/* Subject */}
                 <div>
                   <label className="block font-mono text-sm mb-2">
                     Subject
@@ -290,7 +352,6 @@ export function Messages() {
                   />
                 </div>
 
-                {/* Message Body */}
                 <div>
                   <label className="block font-mono text-sm mb-2">
                     Message
@@ -304,7 +365,6 @@ export function Messages() {
                   />
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex gap-3">
                   <button
                     className="px-6 py-3 border-2 border-black bg-[#ec78b8] text-white hover:opacity-90 transition-opacity"
@@ -315,6 +375,7 @@ export function Messages() {
                       {sending ? "Sending..." : "Send Message"}
                     </span>
                   </button>
+
                   <button className="px-6 py-3 border-2 border-black bg-white hover:bg-[#f6ede4] transition-colors">
                     <span className="font-mono text-sm">Save Draft</span>
                   </button>
