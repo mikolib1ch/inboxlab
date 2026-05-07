@@ -134,16 +134,16 @@ export function Profile() {
           {/* Name and Bio */}
           <div className="flex-1 space-y-4">
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold">Alex Johnson</h1>
+              <h1 className="text-2xl font-bold">Miko Libich</h1>
               <p className="text-sm text-gray-600">
-                Computer Science Major • Class of 2027
+                Computer Science Undergraduate • Class of 2027
               </p>
             </div>
             <div className="bg-[#f6ede4] border-2 border-black p-4">
               <p className="font-mono text-sm">
-                I'm a sophomore studying computer science with a passion for AI
-                and machine learning. Working on improving my professional
-                communication skills through inbox lab!
+                I'm an undergraduate studying computer science with a passion
+                for AI and machine learning. Working on improving my
+                professional communication skills through inbox lab!
               </p>
             </div>
           </div>

@@ -46,6 +46,7 @@ export function Messages() {
   const [body, setBody] = useState("");
   const [to, setTo] = useState("");
   const [sending, setSending] = useState(false);
+  const [showSentPopup, setShowSentPopup] = useState(false);
 
   const contacts = [
     { id: 1, name: "Sarah Martinez" },
@@ -266,11 +267,25 @@ export function Messages() {
     setBody("");
     setTo("");
     setSending(false);
-    alert("Message sent!");
+    setShowSentPopup(true);
+
+    setTimeout(() => {
+      setShowSentPopup(false);
+    }, 2500);
   };
 
   return (
     <div className="h-[calc(100vh-10rem)] bg-white border-2 border-black flex">
+      {showSentPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white border-4 border-black shadow-2xl px-8 py-6 rounded-2xl text-center">
+            <div className="text-5xl mb-3">✅</div>
+
+            <div className="font-bold text-xl mb-2">Message Sent!</div>
+          </div>
+        </div>
+      )}
+
       <div className="w-80 border-r-2 border-black flex flex-col">
         <div className="p-4 border-b-2 border-black">
           <h2 className="font-bold text-lg">Recently Contacted Staff</h2>

@@ -1,5 +1,23 @@
 import { useState } from "react";
 
+const badgeIcons: Record<string, string> = {
+  "Perfect Tone II": "⭐",
+  "Perfect Tone III": "⭐",
+  "Early Bird II": "🕊️",
+  "Early Bird III": "🕊️",
+  "Clear Communicator II": "💬",
+  "Clear Communicator III": "💬",
+  "Perfect Completeness I": "✅",
+  "Perfect Completeness II": "✅",
+  "Perfect Completeness III": "✅",
+  "Perfect Structure I": "🏗️",
+  "Perfect Structure II": "🏗️",
+  "Perfect Structure III": "🏗️",
+  "Speedy Sender I": "⚡",
+  "Speedy Sender II": "⚡",
+  "Speedy Sender III": "⚡",
+};
+
 interface BadgeUnlockModalProps {
   badges: string[];
   onClose: () => void;
@@ -11,6 +29,7 @@ export function BadgeUnlockModal({ badges, onClose }: BadgeUnlockModalProps) {
   if (badges.length === 0) return null;
 
   const currentBadge = badges[currentIndex];
+  const currentIcon = badgeIcons[currentBadge] || "🏆";
 
   const handlePrevious = () => {
     setCurrentIndex((prev) => (prev === 0 ? badges.length - 1 : prev - 1));
@@ -39,7 +58,7 @@ export function BadgeUnlockModal({ badges, onClose }: BadgeUnlockModalProps) {
         </p>
 
         <div className="mx-auto w-32 h-32 rounded-full border-4 border-black bg-[#ec78b8] flex items-center justify-center text-6xl mb-6">
-          🏆
+          {currentIcon}
         </div>
 
         <h3 className="text-xl font-bold font-mono mb-2">{currentBadge}</h3>
