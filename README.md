@@ -1,7 +1,7 @@
 
   # Inbox Lab
 
-  This is a code bundle for Inbox Lab. The original project is available at https://www.figma.com/design/bRYzNtqq4rddjhZn75relE/Inbox-Lab.
+  This is a code bundle for Inbox Lab.
 
   ## Running the code
 
